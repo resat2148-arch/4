@@ -340,6 +340,17 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      send_letter: {
+        Args: {
+          p_audio_path: string;
+          p_duration_sec: number;
+          p_question_id?: string;
+          p_recipient_id?: string;
+          p_recipient_type?: Database['public']['Enums']['recipient_type'];
+          p_reply_to_letter_id?: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       friendship_status: 'pending' | 'accepted';
