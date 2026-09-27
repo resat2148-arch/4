@@ -131,3 +131,12 @@ Aşamalar sırasında onaylanan kararlar. Yeni bir karar alındığında buraya 
 - Bir mektup silindiğinde (hesap silme) moderasyon kararı saklanır, yalnızca mektupla bağı kopar (`letter_id` boşalır).
 - Kurallar ekranında "Hesabın var mı? Giriş yap" bağlantısı vardır; daha önce onay vermiş kullanıcı kutucuğu tekrar işaretlemez.
 - Küçük büyük harfli başlıklar (Eyebrow) Türkçe kurala göre büyütülür (i → İ).
+
+### 3. aşama
+- Mektup kaydı (`send_letter`) 3. aşamada oluşturulur; zamanlanmış teslim ve durum geçişleri 4. aşamadadır.
+- Ses dosyaları özel `letters` bucket'ında rastgele adla (`{uuid}.m4a`) durur; dosya yolunda kullanıcı kimliği yoktur. En fazla 1 MB, yalnızca m4a.
+- Kayıt: m4a/AAC, mono, 32 kbps. 1–180 saniye.
+- Kayıt bittikten sonra göndermeden önce dinlemek için "Dinle" düğmesi vardır.
+- Kişi başı günde (Europe/Istanbul) en fazla 5 mektup gönderilir.
+- Migration'ları ürün sahibi `npm run db:push` ile uygular; Claude sonucu Supabase bağlantısı üzerinden kontrol eder.
+- `.env` git'e girmez; şablon `.env.example`'dır.
