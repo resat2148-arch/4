@@ -126,3 +126,8 @@ Aşamalar sırasında onaylanan kararlar. Yeni bir karar alındığında buraya 
 - Migration'lar `supabase` CLI ile uygulanır (`npx supabase db push`).
 - Hesap ekranı gelene kadar (7. aşama) "Çıkış yap" bağlantısı Kurallar sekmesinin altındadır.
 - Supabase'in hazır e-posta gönderimi yalnızca geliştirme içindir; kapalı testten (9. aşama) önce özel SMTP ayarlanır.
+- `friendships` tablosunda `id` birincil anahtardır ve `user_b` davet kabul edilene kadar boştur; aynı iki kişi arasında tek dostluk olabilir.
+- `blocks` tablosuna uygulamadan doğrudan erişim yoktur (engellenen kişinin kimliği istemciye ulaşmamalı); engelleme 7. aşamada mektup üzerinden çalışan bir fonksiyonla yapılır.
+- Bir mektup silindiğinde (hesap silme) moderasyon kararı saklanır, yalnızca mektupla bağı kopar (`letter_id` boşalır).
+- Kurallar ekranında "Hesabın var mı? Giriş yap" bağlantısı vardır; daha önce onay vermiş kullanıcı kutucuğu tekrar işaretlemez.
+- Küçük büyük harfli başlıklar (Eyebrow) Türkçe kurala göre büyütülür (i → İ).
