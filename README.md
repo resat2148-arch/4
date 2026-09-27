@@ -32,6 +32,8 @@ npm run web        # tarayıcıda açar (yalnızca geliştirme sırasında kontr
 npm run typecheck  # TypeScript kontrolü
 ```
 
+Ses kaydı için gerçek bir telefon gerekir (iOS simülatöründe mikrofon yoktur). Expo Go'da mikrofon izni penceresi Expo'nun metnini gösterir; uygulamanın Türkçe izin metni kendi derlemelerimizde (EAS) görünür.
+
 ## Veritabanı
 
 ```
@@ -40,6 +42,8 @@ supabase/seed.sql      örnek sorular (dün, bugün ve sonraki 5 gün)
 supabase/tests/        pgTAP ile RLS testleri
 supabase/templates/    giriş kodu e-postası
 ```
+
+Ses dosyaları özel `letters` bucket'ında `{uuid}.m4a` adıyla durur (en fazla 1 MB). Mektuplar yalnızca `send_letter` fonksiyonuyla oluşturulur; durum ve 60–120 dakikalık teslim zamanını sunucu belirler.
 
 ```bash
 npm run db:push    # yeni migration'ları bağlı projeye uygular
@@ -61,7 +65,8 @@ src/app/            ekranlar (expo-router, dosya tabanlı yönlendirme)
   support.tsx       Destek kaynakları
 src/components/     ortak arayüz bileşenleri
 src/theme/          renkler, yazı tipleri, ölçüler
-src/lib/            Supabase istemcisi, veritabanı tipleri, yardımcılar
+src/lib/            Supabase istemcisi, veritabanı tipleri, mektup yükleme/gönderme
+src/hooks/          günün sorusu, ses kaydı (useLetterRecorder)
 src/state/auth.tsx  oturum ve 18+ onayı; hangi ekranların açık olduğunu belirler
 src/data/mock.ts    henüz veritabanına bağlanmamış ekranların örnek verisi
 ```

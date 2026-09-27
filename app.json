@@ -32,6 +32,14 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Sesli Mektup, mektubunu kaydedebilmek için mikrofonuna erişmek istiyor. Kayıt yalnızca sen kayıt düğmesine bastığında yapılır.",
+          "enableBackgroundPlayback": false,
+          "enableBackgroundRecording": false
+        }
       ]
     ],
     "scheme": "sesli-mektup",

@@ -1,9 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
+import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
 import { FlagIcon, MicIcon, PauseIcon, PlayIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
@@ -14,7 +14,8 @@ import { formatDuration } from '@/lib/format';
 import { colors, fonts, MIN_TOUCH, radius } from '@/theme';
 
 const BAR_COUNT = 40;
-const barHeight = (i: number) => 10 + Math.round(Math.abs(Math.sin(i * 0.9) + Math.sin(i * 2.3)) * 24);
+const barHeight = (i: number) =>
+  10 + Math.round(Math.abs(Math.sin(i * 0.9) + Math.sin(i * 2.3)) * 24);
 
 export default function ListenScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -32,7 +33,9 @@ export default function ListenScreen() {
   }
 
   const eyebrow =
-    letter.senderType === 'friend' ? `Dostundan mektup · ${letter.friendName}` : 'Bir yabancıdan mektup';
+    letter.senderType === 'friend'
+      ? `Dostundan mektup · ${letter.friendName}`
+      : 'Bir yabancıdan mektup';
   const played = Math.floor((position / letter.durationSec) * BAR_COUNT);
 
   return (
@@ -146,7 +149,6 @@ const REPORT_REASONS = [
 type ReportReason = (typeof REPORT_REASONS)[number]['key'];
 
 function ReportSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const insets = useSafeAreaInsets();
   const [reason, setReason] = useState<ReportReason | null>(null);
 
   const close = () => {
@@ -155,45 +157,37 @@ function ReportSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={close}>
-      <View style={styles.scrim}>
-        <Pressable accessibilityLabel="Kapat" style={StyleSheet.absoluteFill} onPress={close} />
-        <View
-          accessibilityViewIsModal
-          accessibilityLabel="Mektubu bildir"
-          style={[styles.sheet, { paddingBottom: insets.bottom + 24 }]}>
-          {reason === null ? (
-            <View style={styles.sheetBody}>
-              <Heading size={24}>Bu mektupta ne var?</Heading>
-              <Body size={14} color={colors.textSecondary}>
-                Bildirimin gizli kalır. Bir moderatör mektubu dinleyip karar verir.
-              </Body>
-              <View style={styles.reasons}>
-                {REPORT_REASONS.map((r) => (
-                  <Pressable
-                    key={r.key}
-                    accessibilityRole="button"
-                    onPress={() => setReason(r.key)}
-                    style={({ pressed }) => [styles.reason, pressed && styles.pressed]}>
-                    <Body weight="medium">{r.label}</Body>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : (
-            <View style={styles.sheetBody}>
-              <Heading size={24}>Teşekkürler.</Heading>
-              <Body lineHeight={1.5}>
-                {reason === 'at_risk'
-                  ? 'Bu mektup öncelikli olarak incelenecek ve gönderene destek kaynakları iletilecek.'
-                  : 'Bu mektup incelenecek. Bu arada bu kişiden yeni mektup almayacaksın.'}
-              </Body>
-            </View>
-          )}
-          <Button label="Kapat" variant="link" onPress={close} />
+    <BottomSheet visible={visible} onClose={close} accessibilityLabel="Mektubu bildir">
+      {reason === null ? (
+        <View style={styles.sheetBody}>
+          <Heading size={24}>Bu mektupta ne var?</Heading>
+          <Body size={14} color={colors.textSecondary}>
+            Bildirimin gizli kalır. Bir moderatör mektubu dinleyip karar verir.
+          </Body>
+          <View style={styles.reasons}>
+            {REPORT_REASONS.map((r) => (
+              <Pressable
+                key={r.key}
+                accessibilityRole="button"
+                onPress={() => setReason(r.key)}
+                style={({ pressed }) => [styles.reason, pressed && styles.pressed]}>
+                <Body weight="medium">{r.label}</Body>
+              </Pressable>
+            ))}
+          </View>
         </View>
-      </View>
-    </Modal>
+      ) : (
+        <View style={styles.sheetBody}>
+          <Heading size={24}>Teşekkürler.</Heading>
+          <Body lineHeight={1.5}>
+            {reason === 'at_risk'
+              ? 'Bu mektup öncelikli olarak incelenecek ve gönderene destek kaynakları iletilecek.'
+              : 'Bu mektup incelenecek. Bu arada bu kişiden yeni mektup almayacaksın.'}
+          </Body>
+        </View>
+      )}
+      <Button label="Kapat" variant="link" onPress={close} />
+    </BottomSheet>
   );
 }
 
@@ -253,19 +247,6 @@ const styles = StyleSheet.create({
   },
   playNudge: { marginLeft: 4 },
   centered: { textAlign: 'center' },
-  scrim: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: colors.scrim,
-  },
-  sheet: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingTop: 28,
-    paddingHorizontal: 24,
-    gap: 16,
-  },
   sheetBody: { gap: 12 },
   reasons: { gap: 10 },
   reason: {

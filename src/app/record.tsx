@@ -1,21 +1,26 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { router, useLocalSearchParams, useNavigation } from 'expo-router';
+import { usePreventRemove } from 'expo-router/react-navigation';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { BackButton } from '@/components/BackButton';
+import { BottomSheet } from '@/components/BottomSheet';
 import { Button } from '@/components/Button';
+import { PauseIcon, PlayIcon } from '@/components/icons';
 import { Screen } from '@/components/Screen';
 import { Body, Eyebrow, Heading } from '@/components/Typography';
 import { Waveform } from '@/components/Waveform';
 import { MAX_LETTER_SECONDS } from '@/constants/letters';
 import { findIncomingLetter, type RecipientType } from '@/data/mock';
+import { useLetterRecorder } from '@/hooks/useLetterRecorder';
 import { useTodayQuestion } from '@/hooks/useTodayQuestion';
 import { formatDuration } from '@/lib/format';
-import { darkColors, fonts, MIN_TOUCH } from '@/theme';
+import { LetterError, sendLetter, uploadLetterAudio } from '@/lib/letters';
+import { colors, darkColors, fonts, MIN_TOUCH } from '@/theme';
 
 const BAR_COUNT = 36;
-const barHeight = (i: number) => 10 + Math.round(Math.abs(Math.sin(i * 1.3) + Math.sin(i * 0.7)) * 22);
 
 const TARGETS: { key: RecipientType; label: string }[] = [
   { key: 'stranger', label: 'Bir yabancıya' },
@@ -24,18 +29,92 @@ const TARGETS: { key: RecipientType; label: string }[] = [
 
 export default function RecordScreen() {
   const { replyTo } = useLocalSearchParams<{ replyTo?: string }>();
+  // Stage 6 replaces the sample letter with the real one being answered.
   const replyLetter = findIncomingLetter(replyTo);
   const today = useTodayQuestion();
   const questionText =
     replyLetter?.questionText ?? (today.status === 'ready' ? today.question.text : '…');
-  const [target, setTarget] = useState<RecipientType>('stranger');
-  const { seconds, recording, toggle, reset } = useFakeRecorder();
 
-  const ready = !recording && seconds > 0;
+  const recorder = useLetterRecorder();
+  const { phase, recording } = recorder;
+  const player = useAudioPlayer(recording ? { uri: recording.uri } : null);
+  const playback = useAudioPlayerStatus(player);
+
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  // Kept across retries so a failed send does not upload the same file twice.
+  const uploadedPath = useRef<string | null>(null);
+  const [friendNote, setFriendNote] = useState(false);
+
+  // Ask before throwing away an unsent recording (back button, swipe, hardware back).
+  const navigation = useNavigation();
+  const [leaveAction, setLeaveAction] = useState<Parameters<typeof navigation.dispatch>[0] | null>(
+    null,
+  );
+  // While sending (and after a successful send) leaving is allowed: the letter is on its way.
+  const hasUnsaved = (phase === 'recording' || phase === 'recorded') && !sending;
+  usePreventRemove(hasUnsaved, ({ data }) => {
+    if (phase === 'recording') recorder.stop();
+    player.pause();
+    setLeaveAction(data.action);
+  });
+
+  const canSend =
+    phase === 'recorded' && !replyLetter && today.status === 'ready' && !sending && recording;
+
+  const send = async () => {
+    if (!canSend || !recording || today.status !== 'ready') return;
+    player.pause();
+    setSending(true);
+    setSendError(null);
+    try {
+      uploadedPath.current ??= await uploadLetterAudio(recording.uri);
+      await sendLetter({
+        audioPath: uploadedPath.current,
+        durationSec: recording.durationSec,
+        questionId: today.question.id,
+      });
+      // `sending` stays true, so the leave guard above is already off.
+      router.replace('/on-the-way');
+    } catch (error) {
+      const letterError = error instanceof LetterError ? error : new LetterError('unknown');
+      setSendError(letterError.userMessage);
+      // A rejected file (not a network problem) must be uploaded again after re-recording.
+      if (!letterError.retryable) uploadedPath.current = null;
+      setSending(false);
+    }
+  };
+
+  const resetAll = () => {
+    player.pause();
+    uploadedPath.current = null;
+    setSendError(null);
+    recorder.reset();
+  };
+
+  const togglePreview = () => {
+    if (playback.playing) {
+      player.pause();
+      return;
+    }
+    if (playback.duration > 0 && playback.currentTime >= playback.duration - 0.1) player.seekTo(0);
+    player.play();
+  };
+
   let status = 'Kaydetmek için dokun';
-  if (recording) status = 'Kaydediliyor… durdurmak için dokun';
-  else if (seconds >= MAX_LETTER_SECONDS) status = 'Süre doldu, kayıt hazır';
-  else if (seconds > 0) status = 'Kayıt hazır';
+  if (phase === 'recording') status = 'Kaydediliyor… durdurmak için dokun';
+  else if (phase === 'recorded')
+    status =
+      recording?.durationSec === MAX_LETTER_SECONDS ? 'Süre doldu, kayıt hazır' : 'Kayıt hazır';
+
+  const bars = barsFor(recorder.levels, phase);
+  // Once the preview has been started, the timer and bars follow playback;
+  // before that they show the whole recording.
+  const previewing = phase === 'recorded' && (playback.playing || playback.currentTime > 0);
+  const previewProgress =
+    previewing && playback.duration > 0 ? playback.currentTime / playback.duration : 1;
+  const shownSeconds = previewing ? Math.floor(playback.currentTime) : recorder.elapsedSec;
+  const totalSeconds = previewing && recording ? recording.durationSec : MAX_LETTER_SECONDS;
 
   return (
     <Screen background={darkColors.background} topGap={4} gap={24}>
@@ -59,64 +138,151 @@ export default function RecordScreen() {
             : 'Cevabın, mektubunu dinlediğin yabancıya gidecek.'}
         </Body>
       ) : (
-        <View accessibilityRole="radiogroup" accessibilityLabel="Kime gönderilecek" style={styles.segment}>
-          {TARGETS.map((t) => {
-            const selected = t.key === target;
-            return (
-              <Pressable
-                key={t.key}
-                accessibilityRole="radio"
-                accessibilityState={{ selected }}
-                onPress={() => setTarget(t.key)}
-                style={[styles.segmentItem, selected && styles.segmentItemOn]}>
-                <Text style={[styles.segmentLabel, { color: selected ? darkColors.background : darkColors.textSoft }]}>
-                  {t.label}
-                </Text>
-              </Pressable>
-            );
-          })}
+        <View style={styles.targetBlock}>
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Kime gönderilecek"
+            style={styles.segment}>
+            {TARGETS.map((t) => {
+              // Adding friends arrives in stage 7; until then only strangers.
+              const available = t.key === 'stranger';
+              const selected = t.key === 'stranger';
+              return (
+                <Pressable
+                  key={t.key}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected, disabled: !available }}
+                  onPress={() => setFriendNote(!available)}
+                  style={[styles.segmentItem, selected && styles.segmentItemOn]}>
+                  <Text
+                    style={[
+                      styles.segmentLabel,
+                      {
+                        color: selected
+                          ? darkColors.background
+                          : available
+                            ? darkColors.textSoft
+                            : darkColors.lineStrong,
+                      },
+                    ]}>
+                    {t.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {friendNote ? (
+            <Body size={14} color={darkColors.textSecondary} accessibilityLiveRegion="polite">
+              Henüz bir dostun yok. Dost ekleme yakında geliyor.
+            </Body>
+          ) : null}
         </View>
       )}
 
       <View style={styles.recorder}>
         <View style={styles.timer}>
-          <Text style={styles.timerValue}>{formatDuration(seconds)}</Text>
-          <Text style={styles.timerMax}>/ {formatDuration(MAX_LETTER_SECONDS)}</Text>
+          <Text style={styles.timerValue}>{formatDuration(shownSeconds)}</Text>
+          <Text style={styles.timerMax}>/ {formatDuration(totalSeconds)}</Text>
         </View>
 
         <Waveform
           count={BAR_COUNT}
-          filled={Math.min(BAR_COUNT, seconds)}
+          filled={phase === 'recorded' ? Math.round(previewProgress * bars.length) : bars.length}
           activeColor={darkColors.accent}
           inactiveColor={darkColors.line}
           height={64}
-          barHeight={barHeight}
-          flatInactive
+          barHeight={(i) => 6 + Math.round((bars[i] ?? 0) * 40)}
+          flatInactive={phase !== 'recorded'}
         />
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={recording ? 'Kaydı durdur' : 'Kayda başla'}
-          onPress={toggle}
-          style={styles.recButton}>
-          <View style={recording ? styles.recStop : styles.recDot} />
-        </Pressable>
+        {phase === 'recorded' ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={playback.playing ? 'Duraklat' : 'Kaydını dinle'}
+            onPress={togglePreview}
+            disabled={sending}
+            style={styles.previewButton}>
+            {playback.playing ? (
+              <PauseIcon color={darkColors.background} />
+            ) : (
+              <View style={styles.playNudge}>
+                <PlayIcon color={darkColors.background} />
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={phase === 'recording' ? 'Kaydı durdur' : 'Kayda başla'}
+            onPress={phase === 'recording' ? recorder.stop : recorder.start}
+            style={styles.recButton}>
+            <View style={phase === 'recording' ? styles.recStop : styles.recDot} />
+          </Pressable>
+        )}
 
         <Body color={darkColors.textSecondary} accessibilityLiveRegion="polite">
-          {status}
+          {phase === 'recorded'
+            ? playback.playing
+              ? 'Dinleniyor…'
+              : `${status} · dinlemek için dokun`
+            : status}
         </Body>
+
+        {recorder.permission === 'denied' ? (
+          <View style={styles.notice}>
+            <Body size={14} color={darkColors.textSoft} style={styles.centered}>
+              Mektup kaydedebilmek için mikrofon iznine ihtiyacımız var.
+            </Body>
+            <Button
+              label="Ayarları aç"
+              variant="outlineDark"
+              onPress={() => Linking.openSettings()}
+            />
+          </View>
+        ) : null}
+        {recorder.error ? (
+          <Body
+            size={14}
+            color={darkColors.accent}
+            style={styles.centered}
+            accessibilityLiveRegion="polite">
+            {recorder.error}
+          </Body>
+        ) : null}
       </View>
 
-      {ready ? (
-        <View style={styles.actions}>
-          <Button label="Baştan al" variant="outlineDark" onPress={reset} style={styles.resetButton} />
-          {/* Static stage: nothing is uploaded yet. */}
-          <Button
-            label="Mektubu gönder"
-            variant="light"
-            onPress={() => router.replace('/on-the-way')}
-            style={styles.sendButton}
-          />
+      {phase === 'recorded' ? (
+        <View style={styles.bottom}>
+          {sendError ? (
+            <Body
+              size={14}
+              color={darkColors.accent}
+              style={styles.centered}
+              accessibilityLiveRegion="polite">
+              {sendError}
+            </Body>
+          ) : null}
+          {replyLetter ? (
+            <Body size={14} color={darkColors.textSecondary} style={styles.centered}>
+              Cevap gönderme, gelen mektuplar bağlandığında açılacak.
+            </Body>
+          ) : null}
+          <View style={styles.actions}>
+            <Button
+              label="Baştan al"
+              variant="outlineDark"
+              onPress={resetAll}
+              disabled={sending}
+              style={styles.resetButton}
+            />
+            <Button
+              label={sending ? 'Gönderiliyor…' : sendError ? 'Tekrar dene' : 'Mektubu gönder'}
+              variant="light"
+              onPress={send}
+              disabled={!canSend}
+              style={styles.sendButton}
+            />
+          </View>
         </View>
       ) : (
         <View style={styles.hint}>
@@ -125,41 +291,50 @@ export default function RecordScreen() {
           </Body>
         </View>
       )}
+
+      <BottomSheet
+        visible={leaveAction !== null}
+        onClose={() => setLeaveAction(null)}
+        accessibilityLabel="Kaydı silmek istiyor musun">
+        <Heading size={24}>Kaydın silinsin mi?</Heading>
+        <Body color={colors.textSecondary} lineHeight={1.5}>
+          Gönderilmemiş kaydın bu ekrandan çıkınca silinir.
+        </Body>
+        <View style={styles.sheetActions}>
+          <Button
+            label="Sil ve çık"
+            onPress={() => {
+              const action = leaveAction;
+              setLeaveAction(null);
+              recorder.reset();
+              // Re-dispatching the intercepted action passes the guard.
+              if (action) navigation.dispatch(action);
+            }}
+          />
+          <Button label="Kayda dön" variant="link" onPress={() => setLeaveAction(null)} />
+        </View>
+      </BottomSheet>
     </Screen>
   );
 }
 
-// Stage 1 has no microphone access; a timer simulates a recording capped at 180 seconds.
-function useFakeRecorder() {
-  const [seconds, setSeconds] = useState(0);
-  const [recording, setRecording] = useState(false);
-
-  useEffect(() => {
-    if (!recording) return;
-    const timer = setInterval(() => {
-      setSeconds((s) => Math.min(MAX_LETTER_SECONDS, s + 1));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [recording]);
-
-  useEffect(() => {
-    if (recording && seconds >= MAX_LETTER_SECONDS) setRecording(false);
-  }, [recording, seconds]);
-
-  return {
-    seconds,
-    recording,
-    toggle: () => setRecording(!recording && seconds < MAX_LETTER_SECONDS),
-    reset: () => {
-      setRecording(false);
-      setSeconds(0);
-    },
-  };
+// While recording: the most recent levels scroll in from the right.
+// Afterwards: the whole recording squeezed into the bar count (loudest per slice).
+function barsFor(levels: number[], phase: 'idle' | 'recording' | 'recorded'): number[] {
+  if (phase === 'recorded' && levels.length > 0) {
+    return Array.from({ length: BAR_COUNT }, (_, i) => {
+      const from = Math.floor((i * levels.length) / BAR_COUNT);
+      const to = Math.max(from + 1, Math.floor(((i + 1) * levels.length) / BAR_COUNT));
+      return Math.max(...levels.slice(from, to));
+    });
+  }
+  return levels.slice(-BAR_COUNT);
 }
 
 const styles = StyleSheet.create({
   question: { gap: 10 },
   questionText: { lineHeight: 28 },
+  targetBlock: { gap: 10 },
   segment: {
     flexDirection: 'row',
     gap: 8,
@@ -223,6 +398,17 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: darkColors.record,
   },
+  previewButton: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: darkColors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playNudge: { marginLeft: 4 },
+  notice: { alignSelf: 'stretch', gap: 12 },
+  bottom: { gap: 12 },
   actions: { flexDirection: 'row', gap: 12 },
   resetButton: { flex: 1 },
   sendButton: { flex: 2 },
@@ -231,4 +417,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   centered: { textAlign: 'center' },
+  sheetActions: { gap: 4 },
 });
