@@ -106,3 +106,23 @@ Her aşama ayrı bir oturumda, kendi başına çalışır hâle getirilerek tama
 - Bir kararı belirsiz bulursan tahmin etme, sor.
 - Yeni bir bağımlılık eklemeden önce neden gerektiğini söyle.
 - Değişken ve tablo adları İngilizce, arayüz metinleri Türkçe.
+
+## Alınan kararlar
+
+Aşamalar sırasında onaylanan kararlar. Yeni bir karar alındığında buraya eklenir.
+
+### 1. aşama
+- İkonlar ve çizimler `react-native-svg` ile, prototipteki SVG'lerden birebir çizilir.
+- Bir mektuba "Sesle cevap ver" ile gelinen kayıt ekranında alıcı seçimi gösterilmez; cevap her zaman özgün gönderene gider.
+- Dost mektubunda başlık "Dostundan mektup · {isim}" biçimindedir (isme ek getirilmez).
+- Destek kaynakları ayrı bir ekrandır; şimdilik yalnızca "Acil durumda 112" içerir, tam liste ürün sahibinden gelecek.
+- Bir mektubu bildirmek, bildiren kullanıcı için o göndereni otomatik olarak engeller ("Bu kişiden yeni mektup almayacaksın"). 7. aşamada böyle uygulanır.
+- Web desteği (`react-native-web`) yalnızca geliştirme sırasında kontrol içindir; uygulama web'e çıkmaz.
+
+### 2. aşama
+- "Gün" Europe/Istanbul saat dilimine göre değişir (günün sorusu Türkiye saatiyle gece yarısı değişir).
+- Akış: Kurallar → Başla → e-posta → 6 haneli kod → Bugün. Onay, giriş tamamlanınca `profiles.age_confirmed_at` alanına yazılır.
+- Oturum `@react-native-async-storage/async-storage` ile saklanır.
+- Migration'lar `supabase` CLI ile uygulanır (`npx supabase db push`).
+- Hesap ekranı gelene kadar (7. aşama) "Çıkış yap" bağlantısı Kurallar sekmesinin altındadır.
+- Supabase'in hazır e-posta gönderimi yalnızca geliştirme içindir; kapalı testten (9. aşama) önce özel SMTP ayarlanır.
