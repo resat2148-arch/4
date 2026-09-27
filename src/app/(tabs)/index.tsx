@@ -8,10 +8,13 @@ import { HeadphonesIcon, MailIcon, MicIcon } from '@/components/icons';
 import { Screen, Spacer } from '@/components/Screen';
 import { DELIVERY_WINDOW_TEXT } from '@/constants/letters';
 import { Body, Eyebrow, Heading } from '@/components/Typography';
-import { hasUnreadLetters, incomingLetters, todayQuestion } from '@/data/mock';
+import { hasUnreadLetters, incomingLetters } from '@/data/mock';
+import { useTodayQuestion } from '@/hooks/useTodayQuestion';
 import { colors, MIN_TOUCH } from '@/theme';
 
 export default function TodayScreen() {
+  const today = useTodayQuestion();
+
   return (
     <Screen hasTabBar>
       <View style={styles.header}>
@@ -31,10 +34,31 @@ export default function TodayScreen() {
 
       <View style={styles.question}>
         <Eyebrow>Bugünün sorusu</Eyebrow>
-        <Heading size={34}>{todayQuestion.text}</Heading>
-        <Body color={colors.textSecondary} lineHeight={1.5}>
-          Sadece sesinle anlat. En fazla 3 dakika. Cevaplar {DELIVERY_WINDOW_TEXT} içinde ulaşır.
-        </Body>
+        {today.status === 'ready' ? (
+          <>
+            <Heading size={34}>{today.question.text}</Heading>
+            <Body color={colors.textSecondary} lineHeight={1.5}>
+              Sadece sesinle anlat. En fazla 3 dakika. Cevaplar {DELIVERY_WINDOW_TEXT} içinde ulaşır.
+            </Body>
+          </>
+        ) : null}
+        {today.status === 'loading' ? (
+          <Body color={colors.textSecondary}>Bugünün sorusu yükleniyor…</Body>
+        ) : null}
+        {today.status === 'none' ? (
+          <>
+            <Heading size={28}>Bugün için henüz bir soru yok.</Heading>
+            <Body color={colors.textSecondary} lineHeight={1.5}>
+              Birazdan tekrar bak; yeni soru her gün gece yarısı yayınlanır.
+            </Body>
+          </>
+        ) : null}
+        {today.status === 'error' ? (
+          <View style={styles.errorRow}>
+            <Body color={colors.textSecondary}>Soru yüklenemedi. İnternet bağlantını kontrol et.</Body>
+            <Button label="Tekrar dene" variant="link" onPress={today.retry} style={styles.retry} />
+          </View>
+        ) : null}
       </View>
 
       <Spacer />
@@ -56,6 +80,7 @@ export default function TodayScreen() {
       <Button
         label="Cevabını kaydet"
         icon={<MicIcon size={20} strokeWidth={1.8} color={colors.onAccent} />}
+        disabled={today.status !== 'ready'}
         onPress={() => router.push('/record')}
       />
     </Screen>
@@ -87,4 +112,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
   },
   question: { gap: 14 },
+  errorRow: { alignItems: 'flex-start', gap: 4 },
+  retry: { paddingHorizontal: 0 },
 });

@@ -5,6 +5,8 @@
   "dependencies": {
     "@expo-google-fonts/figtree": "^0.4.1",
     "@expo-google-fonts/fraunces": "^0.4.1",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "@supabase/supabase-js": "^2.117.2",
     "expo": "~57.0.25",
     "expo-constants": "~57.0.19",
     "expo-font": "~57.0.4",
@@ -31,7 +33,11 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:push": "supabase db push",
+    "db:seed": "supabase db push --include-seed",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --linked --schema public > src/lib/database.types.ts"
   },
   "private": true
 }

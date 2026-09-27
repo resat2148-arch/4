@@ -9,7 +9,8 @@ import { Screen } from '@/components/Screen';
 import { Body, Eyebrow, Heading } from '@/components/Typography';
 import { Waveform } from '@/components/Waveform';
 import { MAX_LETTER_SECONDS } from '@/constants/letters';
-import { findIncomingLetter, todayQuestion, type RecipientType } from '@/data/mock';
+import { findIncomingLetter, type RecipientType } from '@/data/mock';
+import { useTodayQuestion } from '@/hooks/useTodayQuestion';
 import { formatDuration } from '@/lib/format';
 import { darkColors, fonts, MIN_TOUCH } from '@/theme';
 
@@ -24,6 +25,9 @@ const TARGETS: { key: RecipientType; label: string }[] = [
 export default function RecordScreen() {
   const { replyTo } = useLocalSearchParams<{ replyTo?: string }>();
   const replyLetter = findIncomingLetter(replyTo);
+  const today = useTodayQuestion();
+  const questionText =
+    replyLetter?.questionText ?? (today.status === 'ready' ? today.question.text : '…');
   const [target, setTarget] = useState<RecipientType>('stranger');
   const { seconds, recording, toggle, reset } = useFakeRecorder();
 
@@ -43,7 +47,7 @@ export default function RecordScreen() {
           {replyLetter ? 'Cevap veriyorsun' : 'Bugünün sorusu'}
         </Eyebrow>
         <Heading size={22} color={darkColors.textSoft} style={styles.questionText}>
-          {replyLetter?.questionText ?? todayQuestion.text}
+          {questionText}
         </Heading>
       </View>
 

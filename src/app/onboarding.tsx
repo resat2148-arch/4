@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
@@ -7,12 +8,34 @@ import { RulesList } from '@/components/RulesList';
 import { Screen, Spacer } from '@/components/Screen';
 import { SupportLink } from '@/components/SupportLink';
 import { Body, Eyebrow, Heading } from '@/components/Typography';
-import { useConsent } from '@/state/consent';
+import { useAuth } from '@/state/auth';
 import { colors, MIN_TOUCH } from '@/theme';
 
 export default function OnboardingScreen() {
-  const { accept } = useConsent();
+  const { phase, acceptRulesBeforeSignIn, confirmAge } = useAuth();
   const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const signedIn = phase === 'needsConsent';
+
+  const start = async () => {
+    if (!signedIn) {
+      // Consent is recorded as soon as the user has signed in.
+      acceptRulesBeforeSignIn();
+      router.push('/sign-in');
+      return;
+    }
+    // Already signed in (e.g. an earlier attempt failed): record consent now.
+    // Success flips the route guard in the root layout, which opens Bugün.
+    setSaving(true);
+    setError(null);
+    try {
+      await confirmAge();
+    } catch {
+      setError('Kaydedilemedi. İnternet bağlantını kontrol edip tekrar dene.');
+      setSaving(false);
+    }
+  };
 
   return (
     <Screen topGap={20}>
@@ -54,8 +77,18 @@ export default function OnboardingScreen() {
           <Body style={styles.checkLabel}>18 yaşından büyüğüm ve kuralları kabul ediyorum.</Body>
         </Pressable>
 
-        {/* Accepting flips the route guard in the root layout, which moves the user to Bugün. */}
-        <Button label="Başla" disabled={!agreed} onPress={accept} />
+        {error ? (
+          <Body size={14} color={colors.accent} accessibilityLiveRegion="polite">
+            {error}
+          </Body>
+        ) : null}
+
+        <Button label={saving ? 'Kaydediliyor…' : 'Başla'} disabled={!agreed || saving} onPress={start} />
+
+        {signedIn ? null : (
+          // Returning users have already confirmed; their consent is on their profile.
+          <Button label="Hesabın var mı? Giriş yap" variant="link" onPress={() => router.push('/sign-in')} />
+        )}
       </View>
     </Screen>
   );

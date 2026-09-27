@@ -73,9 +73,24 @@ export function Body({
   );
 }
 
+// Turkish uppercase: i -> İ (ı -> I is already right). textTransform and
+// toUpperCase() are not locale-aware, so "Giriş" would otherwise become "GIRIŞ".
+export function toTurkishUpperCase(value: string): string {
+  return value.replace(/i/g, 'İ').toUpperCase();
+}
+
 // Small uppercase label above a section ("Bugünün sorusu").
-export function Eyebrow({ color = colors.accent, style, ...rest }: TextProps & { color?: string }) {
-  return <Text style={[styles.eyebrow, { color }, style]} {...rest} />;
+export function Eyebrow({
+  color = colors.accent,
+  style,
+  children,
+  ...rest
+}: Omit<TextProps, 'children'> & { color?: string; children: string }) {
+  return (
+    <Text style={[styles.eyebrow, { color }, style]} {...rest}>
+      {toTurkishUpperCase(children)}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -83,6 +98,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.sansSemiBold,
     fontSize: 13,
     letterSpacing: 1.56,
-    textTransform: 'uppercase',
   },
 });

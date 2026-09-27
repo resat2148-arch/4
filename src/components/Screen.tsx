@@ -41,7 +41,9 @@ export function Screen({
           },
           contentStyle,
         ]}
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets>
         {children}
       </ScrollView>
       {overlay}
