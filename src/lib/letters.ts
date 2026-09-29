@@ -31,8 +31,11 @@ export async function uploadLetterAudio(fileUri: string): Promise<string> {
   const path = `${randomUUID()}.m4a`;
   const response = await fetch(fileUri);
   const body = await response.arrayBuffer();
+  // Browsers report e.g. "audio/mp4;codecs=opus"; the bucket allows plain MIME types only.
   const contentType =
-    Platform.OS === 'web' ? response.headers.get('content-type') || 'audio/mp4' : 'audio/mp4';
+    Platform.OS === 'web'
+      ? (response.headers.get('content-type') || 'audio/mp4').split(';')[0].trim()
+      : 'audio/mp4';
   const { error } = await supabase.storage
     .from('letters')
     .upload(path, body, { contentType, upsert: false });
