@@ -221,12 +221,15 @@ select is(
 -- Replies (as B). Mark A's friend letter as delivered first.
 -- ---------------------------------------------------------------------------
 
-update public.letters set status = 'delivered', delivered_at = now()
+-- Letters pass through approved before delivered (stage 4 transition rule).
+update public.letters set status = 'approved'
+where audio_path in ('aaaaaaaa-0000-0000-0000-000000000003.m4a', 'aaaaaaaa-0000-0000-0000-000000000001.m4a');
+update public.letters set status = 'delivered'
 where audio_path = 'aaaaaaaa-0000-0000-0000-000000000003.m4a';
 
 -- A stranger letter from A that B was given from the pool.
 update public.letters
-set recipient_id = '00000000-0000-0000-0000-00000000000b', status = 'delivered', delivered_at = now()
+set recipient_id = '00000000-0000-0000-0000-00000000000b', status = 'delivered'
 where audio_path = 'aaaaaaaa-0000-0000-0000-000000000001.m4a';
 
 -- B cannot read letters addressed to them directly, so pass the ids in.

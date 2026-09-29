@@ -325,6 +325,17 @@ export type Database = {
     };
     Functions: {
       confirm_age: { Args: Record<PropertyKey, never>; Returns: string };
+      get_my_outgoing_letters: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          created_at: string;
+          deliver_after: string;
+          duration_sec: number;
+          id: string;
+          recipient_type: Database['public']['Enums']['recipient_type'];
+          state: string;
+        }[];
+      };
       get_today_question: {
         Args: Record<PropertyKey, never>;
         Returns: {
