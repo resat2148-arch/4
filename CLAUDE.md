@@ -142,3 +142,11 @@ Aşamalar sırasında onaylanan kararlar. Yeni bir karar alındığında buraya 
 - Ürün sahibi bilgisayar başında değilse Claude migration'ı Supabase bağlantısı üzerinden, `supabase_migrations.schema_migrations` tablosuna aynı sürüm numarasını yazarak uygulayabilir (CLI geçmişi bozulmaz).
 - `.env` git'e girmez; şablon `.env.example`'dır. `EXPO_PUBLIC_SUPABASE_URL` yalnızca proje adresidir (`https://<ref>.supabase.co`), sonuna yol eklenmez.
 - Telefondan test için web derlemesi Hostinger'de `sesli-mektup.sichtbaron.de` adresinde yayınlanır (arama motorlarına kapalı, yalnızca HTTPS). Bu bir test ortamıdır; uygulamanın asıl dağıtımı mağazalar üzerindendir.
+
+### 4. aşama
+- Durum geçişlerini bir tetikleyici korur: `in_review` → `approved` | `rejected`, `approved` → `delivered`. `approved_at` ve `delivered_at` alanlarını sunucu doldurur.
+- Moderasyon kararı `private.apply_moderation_decision()` ile işlenir (yalnızca sunucu tarafı); karar `moderation_decisions` tablosuna eksiksiz yazılır. 5. aşamaya kadar test onayı SQL editöründen verilir.
+- Teslim görevi (`private.deliver_due_letters`, pg_cron) 5 dakikada bir çalışır. Alıcısı belli mektuplar (dost ve cevap) teslim edilir; yabancı mektupları onaylı hâlde havuzda bekler.
+- Gönderen sonradan banlanmışsa ya da iki taraf arasında sonradan engelleme oluşmuşsa mektup sessizce teslim edilmez; gönderene "iletilemedi" gösterilmez.
+- Gönderenin "Yolda" listesi (`get_my_outgoing_letters`) alıcı bilgisi içermez. Teslim edilen mektup listeden kalkar; "ulaştı" ya da "görüldü" bilgisi yoktur. Reddedilen mektup 7 gün boyunca genel ve suçlamayan bir notla görünür.
+- Reddedilen mektupların ses dosyası 30 gün saklanıp silinir; bu temizlik 5. aşamada gelir.
