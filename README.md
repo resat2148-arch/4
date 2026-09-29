@@ -51,6 +51,38 @@ npm run db:types   # src/lib/database.types.ts dosyasını yeniden üretir
 npm run db:test    # RLS testleri (Docker gerekir: önce `npx supabase start`)
 ```
 
+## Moderasyon (n8n + Telegram)
+
+```
+yeni mektup → Supabase (moderation-notify) → n8n "Moderasyon kuyruğu" → Telegram sohbeti
+Telegram düğmesi → n8n "Moderasyon kararı" → Supabase (moderation-decision) → karar kaydı
+```
+
+Her adım `x-sesli-secret` başlığındaki paylaşılan anahtarla doğrulanır. Anahtar veritabanında (Vault) üretilir; SQL editöründe şu sorguyla okunur ve yalnızca n8n kimlik bilgilerine yazılır:
+
+```sql
+select decrypted_secret from vault.decrypted_secrets where name = 'moderation_secret';
+```
+
+Kurulum (bir kez):
+
+1. Telegram'da **@BotFather** ile bir bot açın, token'ı alın. Botu moderatörlerin grubuna ekleyin; grubun numarasını (ör. `-1001234567890`) öğrenin.
+2. n8n'de üç kimlik bilgisi oluşturun:
+   - **Sesli Mektup · Telegram botu** (Telegram API): bot token'ı.
+   - **Sesli Mektup · x-sesli-secret** (Header Auth): ad `x-sesli-secret`, değer yukarıdaki anahtar.
+   - **Sesli Mektup · Supabase karar anahtarı** (Templated Custom Auth): şablon `{"headers":{"x-sesli-secret":"{{api_key}}"}}`, `api_key` yukarıdaki anahtar.
+3. İki workflow'da da grup numarasını yazın, kimlik bilgilerini seçin ve yayınlayın (Publish). Kaynakları `moderation/n8n/` klasöründedir.
+4. n8n webhook adresini veritabanına yazın:
+   ```sql
+   insert into private.settings (key, value)
+   values ('project_url', 'https://<proje-ref>.supabase.co'),
+          ('moderation_webhook_url', 'https://<n8n-adresi>/webhook/sesli-mektup-moderasyon')
+   on conflict (key) do update set value = excluded.value;
+   ```
+5. Edge Function'ları yükleyin: `npx supabase functions deploy moderation-notify moderation-decision storage-cleanup`.
+
+n8n'e ulaşılamazsa mektup kaybolmaz: 10 dakikada bir yeniden gönderilir. Ses Telegram'a yüklenmez; 24 saat geçerli bir link gider. Karar verildiğinde mesajdaki düğmeler ve link kalkar.
+
 ## Klasör yapısı
 
 ```
@@ -69,4 +101,6 @@ src/lib/            Supabase istemcisi, veritabanı tipleri, mektup yükleme/gö
 src/hooks/          günün sorusu, ses kaydı (useLetterRecorder)
 src/state/auth.tsx  oturum ve 18+ onayı; hangi ekranların açık olduğunu belirler
 src/data/mock.ts    henüz veritabanına bağlanmamış ekranların örnek verisi
+supabase/functions/ Edge Function'lar: moderasyon bildirimi, karar ucu, depolama temizliği
+moderation/n8n/     n8n workflow kaynakları (Workflow SDK)
 ```

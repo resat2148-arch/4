@@ -150,3 +150,15 @@ Aşamalar sırasında onaylanan kararlar. Yeni bir karar alındığında buraya 
 - Gönderen sonradan banlanmışsa ya da iki taraf arasında sonradan engelleme oluşmuşsa mektup sessizce teslim edilmez; gönderene "iletilemedi" gösterilmez.
 - Gönderenin "Yolda" listesi (`get_my_outgoing_letters`) alıcı bilgisi içermez. Teslim edilen mektup listeden kalkar; "ulaştı" ya da "görüldü" bilgisi yoktur. Reddedilen mektup 7 gün boyunca genel ve suçlamayan bir notla görünür.
 - Reddedilen mektupların ses dosyası 30 gün saklanıp silinir; bu temizlik 5. aşamada gelir.
+
+### 5. aşama
+- Moderasyon akışı: yeni mektup → `private.moderation_outbox` → pg_net → Edge Function `moderation-notify` → n8n webhook → Telegram. Karar: Telegram düğmesi → n8n → Edge Function `moderation-decision` → `apply_moderation_decision`.
+- Tek paylaşılan anahtar (Vault'ta `moderation_secret`, başlık `x-sesli-secret`) her adımı doğrular. `project_url` ve `moderation_webhook_url` `private.settings` tablosunda durur, migration'da değil.
+- n8n'in ulaşamadığı mektuplar 10 dakikada bir yeniden gönderilir (en fazla 50 deneme).
+- Ses Telegram'a dosya olarak yüklenmez; 24 saat geçerli imzalı link gider, önizleme kapalıdır. Karar verilince mesajdaki düğmeler ve link kalkar.
+- Moderatöre gönderen hakkında hiçbir bilgi gitmez: yalnızca soru, süre, mektup türü ve cevap olup olmadığı.
+- Ret sebepleri sabittir: `harassment`, `inappropriate`, `personal_info`, `spam`, `other`. Kriz belirtisi `moderation_decisions.at_risk` ile işaretlenir (onayla · kriz, reddet · kriz); gönderene destek kaynakları 7. aşamada gösterilir.
+- `decided_by` alanı `telegram:{kullanıcı numarası} @{kullanıcı adı}` biçimindedir.
+- n8n ve Telegram'ı Claude kurar; workflow kaynakları `moderation/n8n/` klasöründedir. Bot token'ı ve anahtar yalnızca n8n kimlik bilgilerindedir.
+- Uzun süre karar verilmeyen mektuplar için şimdilik otomatik bir şey yapılmaz.
+- Depolama temizliği her gün 03:17 UTC'de çalışır: 30 günden eski reddedilmiş mektupların sesi ve 24 saatten eski, mektuba dönüşmemiş yüklemeler silinir.
