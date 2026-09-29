@@ -139,4 +139,6 @@ Aşamalar sırasında onaylanan kararlar. Yeni bir karar alındığında buraya 
 - Kayıt bittikten sonra göndermeden önce dinlemek için "Dinle" düğmesi vardır.
 - Kişi başı günde (Europe/Istanbul) en fazla 5 mektup gönderilir.
 - Migration'ları ürün sahibi `npm run db:push` ile uygular; Claude sonucu Supabase bağlantısı üzerinden kontrol eder.
-- `.env` git'e girmez; şablon `.env.example`'dır.
+- Ürün sahibi bilgisayar başında değilse Claude migration'ı Supabase bağlantısı üzerinden, `supabase_migrations.schema_migrations` tablosuna aynı sürüm numarasını yazarak uygulayabilir (CLI geçmişi bozulmaz).
+- `.env` git'e girmez; şablon `.env.example`'dır. `EXPO_PUBLIC_SUPABASE_URL` yalnızca proje adresidir (`https://<ref>.supabase.co`), sonuna yol eklenmez.
+- Telefondan test için web derlemesi Hostinger'de `sesli-mektup.sichtbaron.de` adresinde yayınlanır (arama motorlarına kapalı, yalnızca HTTPS). Bu bir test ortamıdır; uygulamanın asıl dağıtımı mağazalar üzerindendir.
