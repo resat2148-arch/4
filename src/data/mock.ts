@@ -14,12 +14,6 @@ export type IncomingLetter = {
   receivedLabel?: string;
 };
 
-export type OutgoingLetter = {
-  id: string;
-  recipientType: RecipientType;
-  etaLabel: string;
-};
-
 export const todayQuestion = {
   id: 'q-today',
   text: 'Bugün seni en çok ne yordu ve bunu kimseye söyleyemedin?',
@@ -52,10 +46,6 @@ export const incomingLetters: IncomingLetter[] = [
     listened: true,
     receivedLabel: '3 gün önce',
   },
-];
-
-export const outgoingLetters: OutgoingLetter[] = [
-  { id: 'o-1', recipientType: 'stranger', etaLabel: 'yaklaşık 1 saat içinde ulaşır' },
 ];
 
 export function findIncomingLetter(id: string | undefined): IncomingLetter | undefined {

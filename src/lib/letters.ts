@@ -86,3 +86,12 @@ export class LetterError extends Error {
     return MESSAGES[this.message] ?? 'Mektubun gönderilemedi. Kaydın duruyor; tekrar dene.';
   }
 }
+
+// Deliberately vague: letters are meant to feel slow, not tracked to the minute.
+export function arrivalText(deliverAfter: string, now: number): string {
+  const minutes = Math.ceil((new Date(deliverAfter).getTime() - now) / 60_000);
+  if (minutes <= 0) return 'yakında ulaşır';
+  if (minutes >= 90) return 'yaklaşık 2 saat içinde ulaşır';
+  if (minutes >= 45) return 'yaklaşık 1 saat içinde ulaşır';
+  return `yaklaşık ${Math.max(5, Math.ceil(minutes / 5) * 5)} dakika içinde ulaşır`;
+}
